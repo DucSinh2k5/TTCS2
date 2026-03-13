@@ -1,0 +1,4 @@
+Cong_suat_toi_da
+Tuoi_xe
+Dung_tich(cc)
+Muc_tieu_hao(km/l)
