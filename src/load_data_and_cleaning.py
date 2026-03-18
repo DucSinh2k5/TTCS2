@@ -32,17 +32,22 @@ def loai_bo_hang_ban(df):
     if "Loai_nhien_lieu" in df.columns:
         valid_fuel = {"Petrol", "Diesel", "CNG", "LPG", "Electric", "Hybrid"}
         df = df[df["Loai_nhien_lieu"].astype(str).isin(valid_fuel)]
+
     if "Hop_so" in df.columns:
         df = df[df["Hop_so"].astype(str).isin({"Manual", "Automatic"})]
+
     if "Loai_bao_hiem" in df.columns:
         df["Loai_bao_hiem"] = df["Loai_bao_hiem"].replace("Third Party", "Third Party insurance")
         df = df[df["Loai_bao_hiem"].astype(str).isin({"Comprehensive", "Third Party insurance", "Zero Dep"})]
+
     if "Nam_san_xuat" in df.columns:
         year = pd.to_numeric(df["Nam_san_xuat"],errors="coerce")
         df = df[year.between(1990,2026)]
+
     if "So_cho_ngoi" in df.columns:
         seats = pd.to_numeric(df["So_cho_ngoi"],errors="coerce")
         df = df[seats.between(1,20)]
+
     drop_cols = ["Mo_men_xoan", "Nam_dang_ky", "Loai_bao_hiem", "Dia_diem"]
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
     return df.reset_index(drop=True)
@@ -65,8 +70,10 @@ def chuyen_cot_sang_so(df):
         year = original[mask].str.extract(r'[-/]?(\d{2})$')[0]
         df.loc[mask, "Nam_dang_ky"] = "20" + year
         df["Nam_dang_ky"] = pd.to_numeric(df["Nam_dang_ky"], errors="coerce").astype("Int64")
+
     if"Nam_san_xuat" in df.columns:
         df["Nam_san_xuat"] = pd.to_numeric(df["Nam_san_xuat"], errors="coerce").astype("Int64")
+        
     if "So_cho_ngoi" in df.columns:
         df["So_cho_ngoi"] = pd.to_numeric(df["So_cho_ngoi"],errors='coerce').astype('Int64')
     return df

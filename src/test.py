@@ -54,6 +54,12 @@ scaler = data["scaler_lr"]
 print(f"\n[7] StandardScaler (dùng cho LR):")
 print(f"  mean (5 đầu): {np.round(scaler.mean_[:5], 4)}")
 print(f"  std  (5 đầu): {np.round(scaler.scale_[:5], 4)}")
+# 7. XGBoost
+xgb = data["model_xgb"]
+print(f"\n[8] XGBoost:")
+print(f"  n_estimators  = {xgb.n_estimators}")
+print(f"  n_features_in = {xgb.n_features_in_}")
+
 
 print("\n" + "=" * 60)
 print("KIỂM TRA HOÀN TẤT")

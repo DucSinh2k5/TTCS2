@@ -18,6 +18,16 @@ def clean_pipeline(df):
     return df
 
 
+def export_cleaned_dataset(df_source, km_median, imputers, top_names, bounds, output_path):
+    df_export = df_source.copy()
+    df_export, _ = tao_moi_feature(df_export, km_median=km_median)
+    df_export, _ = xu_ly_gia_tri_thieu(df_export, imputers=imputers)
+    df_export, _ = gioi_han_xe(df_export, top_names=top_names)
+    df_export, _ = xu_ly_outlier(df_export, bounds=bounds)
+    df_export.to_csv(output_path, index=False)
+    print(f"Da luu du lieu da cleaning vao {output_path}")
+
+
 def main():
     print("\n" + "=" * 60)
     print("DỰ ĐOÁN GIÁ XE Ô TÔ CŨ - MACHINE LEARNING")
@@ -57,6 +67,16 @@ def main():
     df_tr,  bounds = xu_ly_outlier(df_tr)
     df_val, _      = xu_ly_outlier(df_val, bounds=bounds)
     df_test, _     = xu_ly_outlier(df_test, bounds=bounds)
+
+    # 7.5. Lưu bản train đã cleaning/feature engineering để app dùng lại
+    export_cleaned_dataset(
+        df_train,
+        km_median=km_median,
+        imputers=imputers,
+        top_names=top_names,
+        bounds=bounds,
+        output_path="../Datasets/test.csv",
+    )
 
     # 8. EDA — chỉ trên train
     eda_after(df_tr)
