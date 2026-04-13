@@ -221,6 +221,13 @@ def build_input_df(
 ) -> pd.DataFrame:
     """Tạo DataFrame 1 hàng theo đúng tên cột và encoding của pipeline train."""
     tuoi_xe = float(CURRENT_YEAR - year)
+    hang_xe = "Other"
+    if ten_xe:
+        ten = str(ten_xe).strip()
+        if ten.lower().startswith("land rover"):
+            hang_xe = "Land Rover"
+        else:
+            hang_xe = ten.split()[0] if ten else "Other"
 
     row: dict = {
         "Cong_suat_toi_da":       power,
@@ -232,6 +239,7 @@ def build_input_df(
         "Hop_so":                 float(HOP_SO_MAP[transmission]) if transmission else np.nan,
         "Quyen_so_huu":           float(OWNER_MAP[owner_type])  if owner_type  else np.nan,
         "Top_xe":                 ten_xe if ten_xe else "Other",
+        "Hang_xe":                hang_xe,
     }
 
     if km is not None and km > 0:

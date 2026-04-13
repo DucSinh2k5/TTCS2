@@ -14,7 +14,11 @@ def tao_moi_feature(df, km_median=None):
     else:
         if "Nam_dang_ky" in df.columns:
             df["Tuoi_xe"] = datetime.now().year - df["Nam_dang_ky"]
-
+    if "Ten_xe" in df.columns:
+        df["Hang_xe"]  = df["Ten_xe"].str.split().str[0]
+        if "Land Rover" in df["Ten_xe"].values:
+            df.loc[df["Ten_xe"].str.contains("Land Rover", case=False, na=False), "Hang_xe"] = "Land Rover"
+        # df["Hang_xe"] = df.loc[df["Hang_xe"].isin(["Toyota", "Honda", "Ford", "Mazda", "Hyundai", "Tata", "Mahindra","Land Rover","B"])]["Hang_xe"].fillna("Other")
     if "Quang_duong_da_di(km)" in df.columns:
         if "Nam_dang_ky" in df.columns:
             nam = datetime.now().year - df["Nam_dang_ky"]
@@ -87,6 +91,20 @@ def gioi_han_xe(df, top_names=None):
             top_names = df["Ten_xe"].value_counts().nlargest(20).index
         df["Top_xe"] = df["Ten_xe"].apply(lambda x: x if x in top_names else "Other")
     return df, top_names
+
+
+def gioi_han_hang_xe(df, top_brands=None, top_n=15):
+    """
+    top_brands=None  → chế độ fit (train): học top_n hãng từ df.
+    top_brands=<index> → chế độ transform (test): dùng top hãng của train.
+    Trả về: (df, top_brands)
+    """
+    if "Hang_xe" in df.columns:
+        series = df["Hang_xe"].fillna("Other").astype(str)
+        if top_brands is None:
+            top_brands = series.value_counts().nlargest(top_n).index
+        df["Hang_xe"] = series.apply(lambda x: x if x in top_brands else "Other")
+    return df, top_brands
 
 
 def xu_ly_outlier(df, bounds=None):

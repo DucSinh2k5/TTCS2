@@ -5,8 +5,8 @@ from sklearn.model_selection import train_test_split
 from load_data_and_cleaning import load_data, chuyen_cot_sang_so, doi_ten_cot, chuyen_cot_sang_category, loai_bo_hang_ban
 from EDA_after import eda_after
 from EDA_before import eda_before
-from preprocessing import chon_feature, chuan_bi_feature, tien_xu_ly
-from feature_engineering import gioi_han_xe, tao_moi_feature, xu_ly_gia_tri_thieu, xu_ly_outlier
+from preprocessing import tien_xu_ly
+from feature_engineering import gioi_han_xe, gioi_han_hang_xe, tao_moi_feature, xu_ly_gia_tri_thieu, xu_ly_outlier
 from train_and_evaluate import evaluate_model, save, train_model, tinh_metrics, kiem_tra_overfit
 
 
@@ -18,11 +18,12 @@ def clean_pipeline(df):
     return df
 
 
-def export_cleaned_dataset(df_source, km_median, imputers, top_names, bounds, output_path):
+def export_cleaned_dataset(df_source, km_median, imputers, top_names, top_brands, bounds, output_path):
     df_export = df_source.copy()
     df_export, _ = tao_moi_feature(df_export, km_median=km_median)
     df_export, _ = xu_ly_gia_tri_thieu(df_export, imputers=imputers)
     df_export, _ = gioi_han_xe(df_export, top_names=top_names)
+    df_export, _ = gioi_han_hang_xe(df_export, top_brands=top_brands)
     df_export, _ = xu_ly_outlier(df_export, bounds=bounds)
     df_export.to_csv(output_path, index=False)
     print(f"Da luu du lieu da cleaning vao {output_path}")
@@ -63,17 +64,24 @@ def main():
     df_val, _         = gioi_han_xe(df_val, top_names=top_names)
     df_test, _        = gioi_han_xe(df_test, top_names=top_names)
 
+    # 6.5. Giới hạn hãng xe — học top hãng chỉ từ train để giảm overfitting do nhãn hiếm
+    df_tr,  top_brands = gioi_han_hang_xe(df_tr, top_n=15)
+    df_val, _          = gioi_han_hang_xe(df_val, top_brands=top_brands)
+    df_test, _         = gioi_han_hang_xe(df_test, top_brands=top_brands)
+
     # 7. Outlier clipping — tính ngưỡng IQR chỉ từ train
     df_tr,  bounds = xu_ly_outlier(df_tr)
     df_val, _      = xu_ly_outlier(df_val, bounds=bounds)
     df_test, _     = xu_ly_outlier(df_test, bounds=bounds)
-
+    df_tr.to_csv("../Datasets/train_cleaned.csv", index=False)
+    print("✓ Đã lưu bản train đã cleaning: ../Datasets/train_cleaned.csv")
     # 7.5. Lưu bản train đã cleaning/feature engineering để app dùng lại
     export_cleaned_dataset(
         df_train,
         km_median=km_median,
         imputers=imputers,
         top_names=top_names,
+        top_brands=top_brands,
         bounds=bounds,
         output_path="../Datasets/test.csv",
     )
@@ -81,9 +89,21 @@ def main():
     # 8. EDA — chỉ trên train
     eda_after(df_tr)
 
-    # 9. Chuẩn bị features
-    candidate_features   = chuan_bi_feature(df_tr)
-    numeric_features     = [c for c in candidate_features if df_tr[c].dtype.kind in "biufc"]
+    # 9. Chuẩn bị target/feature tự động từ train
+    target_col = "Gia_theo_lakh"
+    excluded_cols = ["Gia_theo_lakh", "Gia_moi_lakh", "Unnamed: 0", "Nam_san_xuat", "Quang_duong_da_di(km)", "Ten_xe"]
+    candidate_features = [c for c in df_tr.columns if c not in excluded_cols]
+    if not candidate_features:
+        raise ValueError("Khong tim thay cot feature trong train")
+
+    # Loại dòng thiếu target để tránh NaN khi huấn luyện
+    if df_tr[target_col].isna().any() or df_val[target_col].isna().any():
+        before_tr, before_val = len(df_tr), len(df_val)
+        df_tr = df_tr[df_tr[target_col].notna()].reset_index(drop=True)
+        df_val = df_val[df_val[target_col].notna()].reset_index(drop=True)
+        print(f"Da loai bo dong thieu target: train {before_tr}->{len(df_tr)}, val {before_val}->{len(df_val)}")
+
+    numeric_features = [c for c in candidate_features if pd.api.types.is_numeric_dtype(df_tr[c])]
     categorical_features = [c for c in candidate_features if c not in numeric_features]
 
     print(f"\nNumeric features     ({len(numeric_features)}): {numeric_features}")
@@ -92,9 +112,9 @@ def main():
     # 10. Preprocessor — fit trên train, transform cả hai
     preprocessor = tien_xu_ly(numeric_features, categorical_features)
     X_tr  = df_tr[candidate_features]
-    y_tr  = df_tr["Gia_theo_lakh"].values
+    y_tr  = df_tr[target_col].values
     X_val = df_val[candidate_features]
-    y_val = df_val["Gia_theo_lakh"].values
+    y_val = df_val[target_col].values
 
     # Đảm bảo test có đủ cột (điền NaN nếu thiếu)
     for col in candidate_features:
@@ -106,18 +126,13 @@ def main():
     X_val_trans  = preprocessor.transform(X_val)
     X_test_trans = preprocessor.transform(X_test)
 
-    # Tên features sau transform
-    cat_names = (
-        list(preprocessor.named_transformers_["cat"]
-             .get_feature_names_out(categorical_features))
-        if categorical_features else []
-    )
-    feature_names = numeric_features + cat_names
+    # Tên features sau transform (không one-hot): giữ nguyên 11 numeric + 2 categorical
+    feature_names = numeric_features + categorical_features
 
-    # 11. Feature selection
-    selected_features, selected_indices = chon_feature(
-        X_tr_trans, y_tr, feature_names
-    )
+    # 11. Dùng toàn bộ feature sau transform để huấn luyện/đánh giá
+    selected_features = feature_names
+    selected_indices = list(range(len(feature_names)))
+    print(f"Using all features ({len(selected_features)}): {selected_features}")
 
     # 12. Tìm tham số tối ưu cho RF rồi train
     # best_rf_params = tim_tham_so_rf(X_tr_trans, y_tr, selected_indices, n_iter=30, k=5)

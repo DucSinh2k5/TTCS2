@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.impute import SimpleImputer
 import re
 def load_data(file):
     df = pd.read_csv(file)

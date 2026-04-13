@@ -1,4 +1,13 @@
-Cong_suat_toi_da
-Tuoi_xe
-Dung_tich(cc)
+Loai_nhien_lieu
+Hop_so
+Quyen_so_huu
 Muc_tieu_hao(km/l)
+Dung_tich(cc)
+Cong_suat_toi_da
+So_cho_ngoi
+Tuoi_xe
+Km_moi_nam
+Chay_nhieu
+log_Quang_duong_da_di(km)
+Hang_xe
+Top_xe
